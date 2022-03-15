@@ -49,11 +49,11 @@ const Query = objectType({
       resolve: (_parent, args, context: Context) => {
         const or = args.searchString
           ? {
-              OR: [
-                { title: { contains: args.searchString } },
-                { content: { contains: args.searchString } },
-              ],
-            }
+            OR: [
+              { title: { contains: args.searchString } },
+              { content: { contains: args.searchString } },
+            ],
+          }
           : {}
 
         return context.prisma.post.findMany({
@@ -199,6 +199,31 @@ const Mutation = objectType({
         })
       },
     })
+
+    t.field('addProfileForUser', {
+      type: 'Profile',
+      args: {
+        userUniqueInput: nonNull(
+          arg({
+            type: 'UserUniqueInput',
+          }),
+        ),
+        bio: stringArg()
+      },
+      resolve: async (_, args, context) => {
+        return context.prisma.profile.create({
+          data: {
+            bio: args.bio,
+            user: {
+              connect: {
+                id: args.userUniqueInput.id || undefined,
+                email: args.userUniqueInput.email || undefined,
+              }
+            }
+          }
+        })
+      }
+    })
   },
 })
 
@@ -217,7 +242,15 @@ const User = objectType({
           })
           .posts()
       },
-    })
+    }),
+      t.field('profile', {
+        type: 'Profile',
+        resolve: (parent, _, context) => {
+          return context.prisma.user.findUnique({
+            where: { id: parent.id }
+          }).profile()
+        }
+      })
   },
 })
 
@@ -281,12 +314,31 @@ const UserCreateInput = inputObjectType({
   },
 })
 
+const Profile = objectType({
+  name: 'Profile',
+  definition(t) {
+    t.nonNull.int('id')
+    t.string('bio')
+    t.field('user', {
+      type: 'User',
+      resolve: (parent, _, context) => {
+        return context.prisma.profile
+          .findUnique({
+            where: { id: parent.id || undefined },
+          })
+          .user()
+      },
+    })
+  },
+})
+
 export const schema = makeSchema({
   types: [
     Query,
     Mutation,
     Post,
     User,
+    Profile,
     UserUniqueInput,
     UserCreateInput,
     PostCreateInput,
@@ -311,3 +363,5 @@ export const schema = makeSchema({
     ],
   },
 })
+
+
