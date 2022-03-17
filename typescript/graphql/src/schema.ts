@@ -20,6 +20,7 @@ const Query = objectType({
     t.nonNull.list.nonNull.field('allUsers', {
       type: 'User',
       resolve: (_parent, _args, context: Context) => {
+        console.log(_parent, _args)
         return context.prisma.user.findMany()
       },
     })
@@ -92,6 +93,26 @@ const Query = objectType({
           })
       },
     })
+
+    t.list.field('AllSample', {
+      type: 'Sample',
+      resolve: (_parent, _args, context: Context) => {
+        return context.prisma.sample.findMany()
+      }
+    })
+
+    t.field('sampleById', {
+      type: 'Sample',
+      args: {
+        id: nonNull(intArg())
+      },
+      resolve: (_parent, args, context: Context) => {
+        return context.prisma.sample.findUnique({
+          where: { id: args.id }
+        })
+      }
+    })
+
   },
 })
 
@@ -224,6 +245,21 @@ const Mutation = objectType({
         })
       }
     })
+
+    t.field('addNewSample', {
+      type: 'Sample',
+      args: {
+        data: nonNull(arg({
+          type: 'CreateSampleInput'
+        }))
+      },
+      resolve: async (_, args, context) => {
+        return await context.prisma.sample.create({
+          data: args.data
+        })
+      }
+    })
+
   },
 })
 
@@ -297,6 +333,14 @@ const UserUniqueInput = inputObjectType({
   },
 })
 
+const CreateSampleInput = inputObjectType({
+  name: 'CreateSampleInput',
+  definition(t) {
+    t.nonNull.string('name')
+    t.nonNull.int('age')
+  }
+})
+
 const PostCreateInput = inputObjectType({
   name: 'PostCreateInput',
   definition(t) {
@@ -332,6 +376,15 @@ const Profile = objectType({
   },
 })
 
+const Sample = objectType({
+  name: 'Sample',
+  definition(t) {
+    t.nonNull.int('id')
+    t.nonNull.string('name')
+    t.nonNull.int('age')
+  }
+})
+
 export const schema = makeSchema({
   types: [
     Query,
@@ -339,9 +392,11 @@ export const schema = makeSchema({
     Post,
     User,
     Profile,
+    Sample,
     UserUniqueInput,
     UserCreateInput,
     PostCreateInput,
+    CreateSampleInput,
     SortOrder,
     PostOrderByUpdatedAtInput,
     DateTime,
