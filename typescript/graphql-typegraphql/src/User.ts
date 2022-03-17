@@ -2,6 +2,7 @@ import 'reflect-metadata'
 import { ObjectType, Field, ID } from 'type-graphql'
 import { IsEmail } from 'class-validator'
 import { Post } from './Post'
+import { Profile } from './Profile'
 
 @ObjectType()
 export class User {
@@ -17,4 +18,7 @@ export class User {
 
   @Field((type) => [Post], { nullable: true })
   posts?: [Post] | null
+
+  @Field((type) => Profile, { nullable: true })
+  profile?: Profile | null
 }

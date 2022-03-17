@@ -9,3 +9,17 @@ export interface Context {
 export const context: Context = {
   prisma: prisma,
 }
+
+// prisma.post.create({
+//   data: {
+//     title: 'Hello World 2',
+//     content: 'This is my first post',
+//     author: {
+//       connect: {
+//         email: "shahul@ahah.com"
+//       }
+//     }
+//   }
+// })
+//   .then(console.log)
+//   .catch(console.error)

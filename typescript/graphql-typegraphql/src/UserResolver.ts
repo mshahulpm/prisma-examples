@@ -15,6 +15,8 @@ import { Post } from './Post'
 import { User } from './User'
 import { Context } from './context'
 import { PostCreateInput } from './PostResolver'
+import { ProfileCreateInput } from './ProfileCreateInput'
+import { Profile } from './Profile'
 @InputType()
 class UserUniqueInput {
   @Field({ nullable: true })
@@ -34,6 +36,9 @@ class UserCreateInput {
 
   @Field((type) => [PostCreateInput], { nullable: true })
   posts: [PostCreateInput]
+
+  @Field((type) => ProfileCreateInput, { nullable: true })
+  profile?: ProfileCreateInput | null;
 }
 
 @Resolver(User)
@@ -47,6 +52,16 @@ export class UserResolver {
         },
       })
       .posts()
+  }
+
+  @FieldResolver()
+  async profile(@Root() user: User, @Ctx() ctx: Context): Promise<Profile | null> {
+    return (await ctx.prisma.user
+      .findUnique({
+        where: {
+          id: user.id,
+        }
+      }).profile()) as Profile | null
   }
 
   @Mutation((returns) => User)
@@ -65,6 +80,11 @@ export class UserResolver {
         posts: {
           create: postData,
         },
+        profile: {
+          create: {
+            bio: data.profile?.bio
+          }
+        }
       },
     })
   }
@@ -92,4 +112,18 @@ export class UserResolver {
         },
       })
   }
+
+  @Query((returns) => User, { nullable: true })
+  async getOneUser(
+    @Arg('email') email: string,
+    @Ctx() ctx: Context,
+  ) {
+    return ctx.prisma.user.findUnique({
+      where: {
+        email
+      },
+    })
+  }
+
+
 }
