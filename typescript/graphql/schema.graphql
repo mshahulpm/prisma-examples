@@ -2,6 +2,11 @@
 ### Do not make changes to this file directly
 
 
+type AuthPayload {
+  token: String
+  user: User
+}
+
 input CreateSampleInput {
   age: Int!
   name: String!
@@ -18,7 +23,8 @@ type Mutation {
   createDraft(authorEmail: String!, data: PostCreateInput!): Post
   deletePost(id: Int!): Post
   incrementPostViewCount(id: Int!): Post
-  signupUser(data: UserCreateInput!): User!
+  login(email: String!, password: String!): AuthPayload
+  signup(email: String!, name: String, password: String!): AuthPayload
   togglePublishPost(id: Int!): Post
 }
 
@@ -53,6 +59,7 @@ type Query {
   allUsers: [User!]!
   draftsByUser(userUniqueInput: UserUniqueInput!): [Post]
   feed(orderBy: PostOrderByUpdatedAtInput, searchString: String, skip: Int, take: Int): [Post!]!
+  me: User
   postById(id: Int): Post
   sampleById(id: Int!): Sample
 }

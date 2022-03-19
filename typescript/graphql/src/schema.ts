@@ -1,3 +1,9 @@
+import { permissions } from './permissions'
+import { jwt_secret, getUserId } from './utils'
+import { compare, hash } from 'bcryptjs'
+import { applyMiddleware } from 'graphql-middleware'
+import { sign } from 'jsonwebtoken'
+
 import {
   intArg,
   makeSchema,
@@ -23,6 +29,18 @@ const Query = objectType({
         console.log(_parent, _args)
         return context.prisma.user.findMany()
       },
+    })
+
+    t.nullable.field('me', {
+      type: 'User',
+      resolve: (parent, args, context: Context) => {
+        const userId = getUserId(context)
+        return context.prisma.user.findUnique({
+          where: {
+            id: Number(userId),
+          },
+        })
+      }
     })
 
     t.nullable.field('postById', {
@@ -119,29 +137,57 @@ const Query = objectType({
 const Mutation = objectType({
   name: 'Mutation',
   definition(t) {
-    t.nonNull.field('signupUser', {
-      type: 'User',
+    t.field('signup', {
+      type: 'AuthPayload',
       args: {
-        data: nonNull(
-          arg({
-            type: 'UserCreateInput',
-          }),
-        ),
+        name: stringArg(),
+        email: nonNull(stringArg()),
+        password: nonNull(stringArg()),
       },
-      resolve: (_, args, context: Context) => {
-        const postData = args.data.posts?.map((post) => {
-          return { title: post.title, content: post.content || undefined }
-        })
-        return context.prisma.user.create({
+      resolve: async (_, args, context: Context) => {
+
+        const hashedPassword = await hash(args.password, 10)
+
+        const user = await context.prisma.user.create({
           data: {
-            name: args.data.name,
-            email: args.data.email,
-            posts: {
-              create: postData,
-            },
+            name: args.name,
+            email: args.email,
+            password: hashedPassword,
           },
         })
+        return {
+          token: sign({ userId: user.id }, jwt_secret),
+          user
+        }
       },
+    })
+
+    t.field('login', {
+      type: 'AuthPayload',
+      args: {
+        email: nonNull(stringArg()),
+        password: nonNull(stringArg())
+      },
+      resolve: async (_parent, _args, context: Context) => {
+        console.log(_args)
+        const user = await context.prisma.user.findUnique({
+          where: {
+            email: _args.email
+          }
+        })
+        console.log(user)
+        if (!user) {
+          throw new Error('No user found')
+        }
+        const passwordValid = await compare(_args.password, user.password)
+        if (!passwordValid) {
+          throw new Error('Invalid password')
+        }
+        return {
+          token: sign({ userId: user.id }, jwt_secret),
+          user
+        }
+      }
     })
 
     t.field('createDraft', {
@@ -261,6 +307,15 @@ const Mutation = objectType({
     })
 
   },
+})
+
+
+const AuthPayload = objectType({
+  name: 'AuthPayload',
+  definition(t) {
+    t.string('token')
+    t.field('user', { type: 'User' })
+  }
 })
 
 const User = objectType({
@@ -385,13 +440,14 @@ const Sample = objectType({
   }
 })
 
-export const schema = makeSchema({
+const schemaWithoutPermissions = makeSchema({
   types: [
     Query,
     Mutation,
     Post,
     User,
     Profile,
+    AuthPayload,
     Sample,
     UserUniqueInput,
     UserCreateInput,
@@ -420,3 +476,4 @@ export const schema = makeSchema({
 })
 
 
+export const schema = applyMiddleware(schemaWithoutPermissions, permissions)
